@@ -10,9 +10,25 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.io.IOException;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+
+import okhttp3.Call;
+import okhttp3.Cookie;
+import okhttp3.CookieJar;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class HomeFragment extends Fragment {
 
@@ -29,18 +45,27 @@ public class HomeFragment extends Fragment {
 
         flush.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                new AlertDialog.Builder(getContext())
-                        .setTitle("警告")
-                        .setMessage("检测到未带安全帽的对象")
-                        .setPositiveButton("确认",null)
-                        .show();
-//                Intent intent = new Intent(getActivity(),MainActivity.class);
-//
-//                startActivity(intent);
-//                getActivity().finish();
+            public void onClick(View v) {  flushHint();  }
+        });
+        
+        Thread t = new Thread(new Runnable() {
+            String response = null;
+            @Override
+            public void run() {
+                try {
+                    response = flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        setFlushData(response);
+                    }
+                });
             }
         });
+        t.start();
 
         return view;
 
@@ -49,5 +74,25 @@ public class HomeFragment extends Fragment {
     public void initUI(View view){
         today_num = (TextView)view.findViewById(R.id.today_records);
         flush = (Button)view.findViewById(R.id.flsuh);
+    }
+
+    private void flushHint(){
+        new AlertDialog.Builder(getContext())
+                .setTitle("警告")
+                .setMessage("检测到未带安全帽的对象")
+                .setPositiveButton("确认",null)
+                .show();
+    }
+
+    private String flush() throws IOException {
+        OkHttpClient okHttpClient = new OkHttpClient();
+        Request request = new Request.Builder()
+                .url("localhost:8080")
+                .build();
+        return okHttpClient.newCall(request).execute().body().string();
+    }
+
+    private void setFlushData(String data){
+
     }
 }
