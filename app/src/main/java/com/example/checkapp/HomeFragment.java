@@ -47,8 +47,7 @@ public class HomeFragment extends Fragment {
             @Override
             public void onClick(View v) {  flushHint();  }
         });
-        
-        Thread t = new Thread(new Runnable() {
+        /*Thread t = new Thread(new Runnable() {
             String response = null;
             @Override
             public void run() {
@@ -65,7 +64,7 @@ public class HomeFragment extends Fragment {
                 });
             }
         });
-        t.start();
+        t.start();*/
 
         return view;
 

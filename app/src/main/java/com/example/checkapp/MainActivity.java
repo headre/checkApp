@@ -11,6 +11,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -104,7 +105,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void handleMessage(Message msg) {
                 switch (msg.what) {
                     case 0:
-                        vibrate();
+                        //vibrate();
                         break;
                 }
             }
@@ -114,17 +115,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void connect(){
-        mThreadPool.execute(new Runnable() {
+        Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-
                 try {
 
                     // 创建Socket对象 & 指定服务端的IP 及 端口号
-                    socket = new Socket("localhost", 8080);
+                    socket = new Socket("10.0.2.2", 4242);
 
                     // 判断客户端和服务器是否连接成功
-                    System.out.println(socket.isConnected());
+                    Log.e("connect", String.valueOf(socket.isConnected()));
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -132,15 +132,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             }
         });
-
-
-    }
-
-    private void receive_data(){
-        mThreadPool.execute(new Runnable() {
+        t.start();
+        try{
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Thread m = new Thread(new Runnable() {
             @Override
             public void run() {
 
+                Log.e("run","receive");
                 try {
                     // 步骤1：创建输入流对象InputStream
                     is = socket.getInputStream();
@@ -152,18 +154,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                     // 步骤3：通过输入流读取器对象 接收服务器发送过来的数据
                     response = br.readLine();
-
+                    Log.e("response", response);
                     // 步骤4:通知主线程,将接收的消息显示到界面
                     Message msg = Message.obtain();
                     msg.what = 0;
                     mHandler.sendMessage(msg);
 
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
 
             }
         });
+        m.start();
+    }
+
+    private void receive_data(){
+        if(socket!=null) {
+        }
 
     }
 
