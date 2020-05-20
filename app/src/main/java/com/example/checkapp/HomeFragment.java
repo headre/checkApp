@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,7 +48,7 @@ public class HomeFragment extends Fragment {
             @Override
             public void onClick(View v) {  flushHint();  }
         });
-        /*Thread t = new Thread(new Runnable() {
+        Thread t = new Thread(new Runnable() {
             String response = null;
             @Override
             public void run() {
@@ -64,7 +65,7 @@ public class HomeFragment extends Fragment {
                 });
             }
         });
-        t.start();*/
+        t.start();
 
         return view;
 
@@ -86,12 +87,13 @@ public class HomeFragment extends Fragment {
     private String flush() throws IOException {
         OkHttpClient okHttpClient = new OkHttpClient();
         Request request = new Request.Builder()
-                .url("localhost:8080")
+                .url("http://10.0.2.2:5000/all_data")
                 .build();
-        return okHttpClient.newCall(request).execute().body().string();
+        String response = okHttpClient.newCall(request).execute().body().string();
+        Log.e("response",response);
+        return response;
     }
 
     private void setFlushData(String data){
-
     }
 }
