@@ -1,5 +1,6 @@
 package com.example.checkapp;
 
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.icu.util.Calendar;
 import android.os.Build;
@@ -8,7 +9,13 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.DatePicker;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -59,7 +66,34 @@ public class LastFragment extends Fragment implements View.OnClickListener,DateP
         recordListView = (ListView)view.findViewById(R.id.list_record);
         recordAdapter = new RecordAdapter(records,getContext());
         recordListView.setAdapter(recordAdapter);
-
+        recordListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Record record = records.get(position);
+                final Dialog dia = new Dialog(getContext());
+                dia.setContentView(R.layout.dialog_view);
+                ImageView imageView = (ImageView) dia.findViewById(R.id.record_img);
+                Button confirm = (Button)dia.findViewById(R.id.bt_confirm);
+                imageView.setImageResource(R.mipmap.error_icon);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(1000, 1200);//两个400分别为添加图片的大小
+                imageView.setImageResource(R.mipmap.record);
+                imageView.setLayoutParams(params);//此处放入图片数据//此处放入图片数据
+                //选择true的话点击其他地方可以使dialog消失，为false的话不会消失
+                dia.setCanceledOnTouchOutside(true);
+                Window w = dia.getWindow();
+                WindowManager.LayoutParams lp = w.getAttributes();
+                lp.x = 0;
+                lp.y = 40;
+                dia.onWindowAttributesChanged(lp);
+                confirm.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        dia.dismiss();      //关闭dialog
+                    }
+                });
+                dia.show();
+            }
+        });
         return view;
     }
 
@@ -74,7 +108,7 @@ public class LastFragment extends Fragment implements View.OnClickListener,DateP
     private void initDateTime() {
         Calendar calendar = Calendar.getInstance();
         year = calendar.get(Calendar.YEAR);
-        month = calendar.get(Calendar.MONTH) + 1;
+        month = calendar.get(Calendar.MONTH);
         day = calendar.get(Calendar.DAY_OF_MONTH);
     }
 
@@ -136,7 +170,7 @@ public class LastFragment extends Fragment implements View.OnClickListener,DateP
                         if (date.length() > 0) { //清除上次记录的日期
                             date.delete(0, date.length());
                         }
-                        inputDate.setText(date.append(String.valueOf(year)).append("-").append(String.valueOf(month)).append("-").append(day));
+                        inputDate.setText(date.append(String.valueOf(year)).append("-").append(String.valueOf(month+1)).append("-").append(day));
                         dialog.dismiss();
                     }
                 });
@@ -153,31 +187,30 @@ public class LastFragment extends Fragment implements View.OnClickListener,DateP
                 dialog.setView(dialogView);
                 dialog.show();
                 //初始化日期监听事件
-                datePicker.init(year, month - 1, day, this);
+                datePicker.init(year, month, day, this);
                 break;
         }
     }
 
     //取得当前日期
     private void initData(@Nullable String args){
+        records = new ArrayList<>();
         if(args==null) {
-            records = new ArrayList<>();
-            Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-
+            records.clear();
+            try{
+                String response = flush();
+                JSONArray jsonArray = new JSONArray(response);
+                for(int i =0;i<jsonArray.length();i++){
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+                    Date date;
+                    date = format.parse(jsonObject.getString("time"));
+                    records.add(new Record(date,jsonObject.getString("place"),jsonObject.getInt("id")));
+                    Log.e("result",jsonObject.toString());
                 }
-            });
-            t.start();
-            Record record_1 = new Record(new Date(), "工地南1号", 1);
-            Record record_2 = new Record(new Date(), "工地北2号", 2);
-            Record record_3 = new Record(new Date(), "工地南2号", 3);
-            Record record_4 = new Record(new Date(), "工地南5号", 4);
-
-            records.add(record_1);
-            records.add(record_2);
-            records.add(record_3);
-            records.add(record_4);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }else{
             records.clear();
             try{
@@ -195,5 +228,30 @@ public class LastFragment extends Fragment implements View.OnClickListener,DateP
             }
         }
     }
+    private String flush() throws IOException {
+        final String[] response = {null};
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    OkHttpClient okHttpClient = new OkHttpClient();
+                    Request request = new Request.Builder()
+                            .url("http://10.0.2.2:5000/all_data")
+                            .build();
+                    response[0] = okHttpClient.newCall(request).execute().body().string();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
 
+            }
+        });
+        t.start();
+        try{
+            t.join();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        Log.e("response", response[0]);
+        return response[0];
+    }
 }

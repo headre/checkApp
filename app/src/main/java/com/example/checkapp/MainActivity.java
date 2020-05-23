@@ -1,32 +1,36 @@
 package com.example.checkapp;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager.widget.ViewPager;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Message;
-import android.os.Vibrator;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import android.os.Handler;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
@@ -34,19 +38,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ViewPager myViewPager;
     private List<Fragment> fragmentList;
     private  MyFragmentPagerAdapter myFragmentPagerAdapter;
-    private Handler mHandler;
-    private Socket socket;
-    private ExecutorService mThreadPool;
-
-    InputStream is;
-
-    // 输入流读取器对象
-    InputStreamReader isr ;
-    BufferedReader br ;
-
-    // 接收服务器发送过来的消息
-    String response;
-
+    private String URL = "http://10.0.2.2:5000";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         initUI();
         initTab();
-        socketInit();
+        //countDown();
     }
 
     private void initUI(){
@@ -87,9 +79,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         myViewPager.setCurrentItem(num);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onClick(View v) {
         if(v.getId()==R.id.bottom_Home){
+
             showFragment(0);
         }
         if(v.getId()==R.id.bottom_Record){
@@ -97,87 +91,32 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void socketInit(){
-        // 初始化线程池
-        mThreadPool = Executors.newCachedThreadPool();
-        mHandler = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                    case 0:
-                        //vibrate();
-                        break;
-                }
-            }
-        };
-        connect();
-        receive_data();
-    }
 
-    private void connect(){
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void notification() {
+        Intent intent = new Intent(this, MainActivity.class);
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-                    // 创建Socket对象 & 指定服务端的IP 及 端口号
-                    socket = new Socket("10.0.2.2", 4242);
+        //8.0 以后需要加上channelId 才能正常显示！！！ 属实把我恶心到了
 
-                    // 判断客户端和服务器是否连接成功
-                    Log.e("connect", String.valueOf(socket.isConnected()));
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-            }
-        });
-        t.start();
-        try{
-            t.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        Thread m = new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                Log.e("run","receive");
-                try {
-                    // 步骤1：创建输入流对象InputStream
-                    is = socket.getInputStream();
-
-                    // 步骤2：创建输入流读取器对象 并传入输入流对象
-                    // 该对象作用：获取服务器返回的数据
-                    isr = new InputStreamReader(is);
-                    br = new BufferedReader(isr);
-
-                    // 步骤3：通过输入流读取器对象 接收服务器发送过来的数据
-                    response = br.readLine();
-                    Log.e("response", response);
-                    // 步骤4:通知主线程,将接收的消息显示到界面
-                    Message msg = Message.obtain();
-                    msg.what = 0;
-                    mHandler.sendMessage(msg);
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-            }
-        });
-        m.start();
-    }
-
-    private void receive_data(){
-        if(socket!=null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            String channelId = "default";
+            String channelName = "默认通知";
+            manager.createNotificationChannel(new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH));
         }
 
-    }
+        PendingIntent pintent = PendingIntent.getActivity(this,0,intent,0);
 
-    private void vibrate(){
-        Vibrator vibrator = (Vibrator)this.getSystemService(this.VIBRATOR_SERVICE);
-        vibrator.vibrate(1000);
-    }
+        Notification notification = new NotificationCompat.Builder(this, "default")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("警告")
+                .setContentText("检测到未佩戴安全帽的对象！！")
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setWhen(System.currentTimeMillis())
+                .setContentIntent(pintent)
+                .build();
 
+        manager.notify(1, notification);
+    }
 }
